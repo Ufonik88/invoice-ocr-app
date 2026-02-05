@@ -1,0 +1,31 @@
+# Invoice OCR Extractor - Python Dependencies
+# ==========================================
+
+# Core Framework
+streamlit>=1.28.0
+
+# OCR
+pytesseract>=0.3.10
+opencv-python>=4.8.0
+Pillow>=10.0.0
+pdf2image>=1.16.0
+
+# LLM Integration
+langchain>=0.1.0
+langchain-community>=0.0.10
+requests>=2.31.0
+tenacity>=8.2.0
+
+# Data Models & Validation
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Excel Export
+openpyxl>=3.1.0
+pandas>=2.0.0
+
+# Configuration
+python-dotenv>=1.0.0
+
+# Utilities
+numpy>=1.24.0
