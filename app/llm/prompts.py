@@ -75,9 +75,12 @@ Expected JSON Output:
 '''
 
 
-INVOICE_EXTRACTION_PROMPT = '''You are an expert invoice data extractor specializing in South African tax invoices.
+INVOICE_EXTRACTION_PROMPT = '''/no_think
+You are an expert invoice data extractor specializing in South African tax invoices.
 
 Your task is to extract structured data from the OCR text of an invoice and return it as a valid JSON object.
+
+CRITICAL: Your response must be ONLY a valid JSON object. No thinking, no explanation, no markdown code blocks, no text before or after the JSON.
 
 IMPORTANT RULES:
 1. Extract ALL line items individually - each product/service should be a separate entry
@@ -143,13 +146,16 @@ Return ONLY the JSON object, no additional text or markdown formatting.
 '''
 
 
-VISION_EXTRACTION_PROMPT = '''You are an expert invoice data extractor with vision capabilities, specializing in South African tax invoices.
+VISION_EXTRACTION_PROMPT = '''/no_think
+You are an expert invoice data extractor with vision capabilities, specializing in South African tax invoices.
 
 Analyze this invoice image and extract all relevant data into a structured JSON format.
 
+CRITICAL: Your response must be ONLY a valid JSON object. No thinking, no explanation, no markdown code blocks, no text before or after the JSON.
+
 IMPORTANT RULES:
 1. Extract ALL line items individually - each product/service should be a separate entry
-2. Currency is South African Rand (ZAR/R). Store numeric values without currency symbols
+2. Currency is South African Rand (ZAR/R). Store numeric values WITHOUT currency symbols
 3. VAT in South Africa is 15% - use this if not explicitly stated
 4. Dates should be in ISO format (YYYY-MM-DD)
 5. If a value cannot be determined, use null
@@ -159,6 +165,7 @@ IMPORTANT RULES:
    - Header information at the top
    - Totals section usually at the bottom
    - Any stamps, logos, or watermarks that contain business info
+8. If this is a delivery note rather than a tax invoice, still extract all available fields
 
 REQUIRED JSON STRUCTURE:
 {
@@ -200,8 +207,7 @@ REQUIRED JSON STRUCTURE:
   "extraction_notes": ["list of any issues or observations"]
 }
 
-Return ONLY the JSON object, no additional text or markdown formatting.
-'''
+Respond with ONLY the JSON object. No other text.'''
 
 
 VALIDATION_PROMPT = '''You are validating extracted invoice data for accuracy.

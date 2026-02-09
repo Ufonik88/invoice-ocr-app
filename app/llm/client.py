@@ -73,19 +73,56 @@ class BaseLLMClient(ABC):
         """Get the provider name."""
         pass
     
-    def _encode_image_base64(self, image: Union[str, Path, bytes, Image.Image]) -> str:
-        """Convert image to base64 string."""
+    def _prepare_image(self, image: Union[str, Path, bytes, Image.Image], max_size: int = 1536) -> tuple[str, str]:
+        """
+        Prepare image for LLM vision API: validate, resize, convert, encode.
+        
+        Returns:
+            Tuple of (base64_string, mime_type) e.g. ("abc...", "image/jpeg")
+        """
+        # Step 1: Load into PIL Image
         if isinstance(image, (str, Path)):
-            with open(image, "rb") as f:
-                return base64.b64encode(f.read()).decode("utf-8")
+            pil_img = Image.open(image)
         elif isinstance(image, bytes):
-            return base64.b64encode(image).decode("utf-8")
+            pil_img = Image.open(BytesIO(image))
         elif isinstance(image, Image.Image):
-            buffer = BytesIO()
-            image.save(buffer, format="PNG")
-            return base64.b64encode(buffer.getvalue()).decode("utf-8")
+            pil_img = image
         else:
             raise TypeError(f"Unsupported image type: {type(image)}")
+        
+        # Step 2: Handle EXIF orientation
+        try:
+            from PIL import ImageOps
+            pil_img = ImageOps.exif_transpose(pil_img)
+        except Exception:
+            pass  # Not all images have EXIF data
+        
+        # Step 3: Convert to RGB (handles CMYK, RGBA, palette modes)
+        if pil_img.mode not in ("RGB", "L"):
+            pil_img = pil_img.convert("RGB")
+        elif pil_img.mode == "L":
+            pil_img = pil_img.convert("RGB")
+        
+        # Step 4: Resize if too large (preserve aspect ratio)
+        w, h = pil_img.size
+        if max(w, h) > max_size:
+            scale = max_size / max(w, h)
+            new_w, new_h = int(w * scale), int(h * scale)
+            pil_img = pil_img.resize((new_w, new_h), Image.LANCZOS)
+            logger.info(f"Resized image from {w}x{h} to {new_w}x{new_h}")
+        
+        # Step 5: Save as PNG (universally supported, lossless)
+        buffer = BytesIO()
+        pil_img.save(buffer, format="PNG", optimize=True)
+        b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+        
+        logger.info(f"Prepared image: {pil_img.size[0]}x{pil_img.size[1]}, PNG, {len(buffer.getvalue()):,} bytes")
+        return b64, "image/png"
+    
+    def _encode_image_base64(self, image: Union[str, Path, bytes, Image.Image]) -> str:
+        """Legacy method - returns just the base64 string."""
+        b64, _ = self._prepare_image(image)
+        return b64
 
 
 class OllamaClient(BaseLLMClient):
@@ -210,7 +247,7 @@ class LMStudioClient(BaseLLMClient):
         """Check if LM Studio server is running."""
         try:
             response = requests.get(
-                f"{self.base_url}/v1/models",
+                f"{self.base_url}/models",
                 timeout=5,
             )
             return response.status_code == 200
@@ -229,7 +266,7 @@ class LMStudioClient(BaseLLMClient):
         
         try:
             response = requests.post(
-                f"{self.base_url}/v1/chat/completions",
+                f"{self.base_url}/chat/completions",
                 json={
                     "model": self.config.model or "local-model",
                     "messages": [
@@ -254,17 +291,21 @@ class LMStudioClient(BaseLLMClient):
     
     def extract_from_image(self, image: Union[str, Path, bytes, Image.Image]) -> str:
         """Extract invoice data using LM Studio vision model."""
-        if not self.config.vision_model:
+        # Use vision_model if set, otherwise fall back to main model
+        vision_model = getattr(self.config, 'vision_model', None) or self.config.model
+        if not vision_model:
             raise LLMClientError("No vision model configured for LM Studio")
         
-        image_base64 = self._encode_image_base64(image)
+        image_base64, mime_type = self._prepare_image(image)
         prompt = get_vision_prompt()
+        
+        logger.info(f"Sending image to LM Studio vision model: {vision_model} ({mime_type})")
         
         try:
             response = requests.post(
-                f"{self.base_url}/v1/chat/completions",
+                f"{self.base_url}/chat/completions",
                 json={
-                    "model": self.config.vision_model,
+                    "model": vision_model,
                     "messages": [
                         {
                             "role": "user",
@@ -273,7 +314,7 @@ class LMStudioClient(BaseLLMClient):
                                 {
                                     "type": "image_url",
                                     "image_url": {
-                                        "url": f"data:image/png;base64,{image_base64}"
+                                        "url": f"data:{mime_type};base64,{image_base64}"
                                     }
                                 }
                             ]
@@ -368,7 +409,7 @@ class DeepseekClient(BaseLLMClient):
         if not self.config.vision_model:
             raise LLMClientError("Vision extraction not available for Deepseek")
         
-        image_base64 = self._encode_image_base64(image)
+        image_base64, mime_type = self._prepare_image(image)
         prompt = get_vision_prompt()
         
         try:
@@ -385,7 +426,7 @@ class DeepseekClient(BaseLLMClient):
                                 {
                                     "type": "image_url",
                                     "image_url": {
-                                        "url": f"data:image/png;base64,{image_base64}"
+                                        "url": f"data:{mime_type};base64,{image_base64}"
                                     }
                                 }
                             ]
@@ -445,9 +486,10 @@ class LLMClient:
         """Get providers in order of preference."""
         order = [self.preferred_provider]
         for provider in LLMProvider:
-            if provider not in order:
+            if provider not in order and provider in self.clients:
                 order.append(provider)
-        return order
+        # Filter to only providers that have client implementations
+        return [p for p in order if p in self.clients]
     
     def get_available_providers(self) -> list[LLMProvider]:
         """Get list of currently available providers."""

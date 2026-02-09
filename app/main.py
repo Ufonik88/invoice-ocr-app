@@ -49,53 +49,118 @@ logger = logging.getLogger(__name__)
 
 
 def apply_theme():
-    """Apply a modern, accessible visual theme."""
+    """Apply a modern, accessible visual theme with high contrast."""
     st.markdown(
         """
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap');
 
             :root {
-                --primary: #0C6E6B;
-                --primary-strong: #0A5A57;
-                --accent: #F06543;
-                --bg: #F5EFE6;
+                --primary: #1A73E8;
+                --primary-strong: #1557B0;
+                --accent: #E8453C;
+                --bg: #FFFFFF;
                 --surface: #FFFFFF;
-                --text: #1D1F21;
-                --muted: #5B5E62;
-                --border: #E6E0D7;
-                --success: #1B9C5A;
-                --warning: #C47F00;
-                --error: #B00020;
+                --text: #1A1A1A;
+                --text-secondary: #4A4A4A;
+                --muted: #6B6B6B;
+                --border: #D0D0D0;
+                --success-bg: #E6F4EA;
+                --success-text: #1E7E34;
+                --warning-bg: #FFF3CD;
+                --warning-text: #856404;
+                --error-bg: #F8D7DA;
+                --error-text: #721C24;
+                --card-shadow: 0 1px 4px rgba(0,0,0,0.08);
             }
 
             html, body, [class*="css"] {
                 font-family: 'Atkinson Hyperlegible', 'Source Sans 3', system-ui, -apple-system, sans-serif;
-                color: var(--text);
+                color: var(--text) !important;
             }
 
             .stApp {
-                background: linear-gradient(180deg, #F9F5EF 0%, #F5EFE6 45%, #F2E9DD 100%);
+                background-color: #F4F6F8 !important;
+            }
+
+            /* Force all Streamlit text elements to be dark */
+            .stApp p, .stApp span, .stApp label, .stApp div,
+            .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
+            [data-testid="stMarkdownContainer"] p,
+            [data-testid="stMarkdownContainer"] span,
+            [data-testid="stMarkdownContainer"] li,
+            [data-testid="stCaptionContainer"] span,
+            .stTabs [data-baseweb="tab"] {
+                color: #1A1A1A !important;
+            }
+
+            /* Global button text fix - ensure all buttons have visible text */
+            button[kind="secondary"],
+            [data-testid="baseButton-secondary"] {
+                color: #1A73E8 !important;
+                background-color: #FFFFFF !important;
+                border: 2px solid #1A73E8 !important;
+            }
+            button[kind="primary"],
+            [data-testid="baseButton-primary"] {
+                color: #FFFFFF !important;
+                background-color: #1A73E8 !important;
+            }
+
+            /* Subheaders */
+            [data-testid="stMarkdownContainer"] h2,
+            [data-testid="stMarkdownContainer"] h3 {
+                color: #1A1A1A !important;
+                font-weight: 700 !important;
+            }
+
+            /* Captions should be slightly lighter */
+            [data-testid="stCaptionContainer"] span {
+                color: #555555 !important;
+            }
+
+            /* Tab styling */
+            .stTabs [data-baseweb="tab-list"] {
+                background-color: #FFFFFF;
+                border-radius: 8px;
+                padding: 4px;
+                border: 1px solid #D0D0D0;
+            }
+
+            .stTabs [data-baseweb="tab"] {
+                background-color: transparent;
+                color: #333333 !important;
+                font-weight: 600;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }
+
+            .stTabs [aria-selected="true"] {
+                background-color: #1A73E8 !important;
+                color: #FFFFFF !important;
             }
 
             .app-header {
-                background: var(--surface);
-                border: 1px solid var(--border);
+                background: #FFFFFF;
+                border: 1px solid #D0D0D0;
                 padding: 1.25rem 1.5rem;
-                border-radius: 16px;
-                box-shadow: 0 2px 12px rgba(20, 20, 20, 0.08);
+                border-radius: 12px;
+                box-shadow: var(--card-shadow);
                 margin-bottom: 1rem;
             }
 
-            .app-card {
-                background: var(--surface);
-                border: 1px solid var(--border);
-                padding: 1rem 1.25rem;
-                border-radius: 14px;
+            .app-header div:first-child {
+                color: #1A1A1A !important;
+                font-size: 1.6rem;
+                font-weight: 700;
+            }
+
+            .app-header .muted {
+                color: #555555 !important;
             }
 
             .muted {
-                color: var(--muted);
+                color: #555555 !important;
             }
 
             .step-row {
@@ -109,42 +174,91 @@ def apply_theme():
                 display: inline-flex;
                 align-items: center;
                 gap: 0.5rem;
-                background: #EAF3F2;
-                color: #0B4E4B;
-                border: 1px solid #CDE3E1;
-                padding: 0.25rem 0.6rem;
+                background: #D4EDDA;
+                color: #155724;
+                border: 1px solid #A3D5B1;
+                padding: 0.3rem 0.75rem;
                 border-radius: 999px;
                 font-size: 0.85rem;
                 font-weight: 600;
             }
 
             .step-pill.inactive {
-                background: #F1F1F1;
-                color: #6B6E72;
-                border-color: #E3E3E3;
+                background: #E9ECEF;
+                color: #495057;
+                border-color: #CED4DA;
             }
 
+            /* Primary button */
             .primary-cta button {
-                background: var(--primary) !important;
+                background: #1A73E8 !important;
                 color: #FFFFFF !important;
                 border: none !important;
+                font-weight: 600 !important;
             }
 
             .primary-cta button:hover {
-                background: var(--primary-strong) !important;
+                background: #1557B0 !important;
             }
 
-            .secondary-cta button {
-                border-color: var(--primary) !important;
-                color: var(--primary) !important;
+            /* Secondary button */
+            .secondary-cta button,
+            .secondary-cta [data-testid="stButton"] button,
+            .secondary-cta [data-testid="baseButton-secondary"],
+            .secondary-cta [kind="secondary"],
+            div.secondary-cta > div > button {
+                border: 2px solid #1A73E8 !important;
+                color: #1A73E8 !important;
+                background: #FFFFFF !important;
+                background-color: #FFFFFF !important;
+                font-weight: 600 !important;
             }
 
+            .secondary-cta button:hover,
+            .secondary-cta [data-testid="stButton"] button:hover {
+                background: #EBF2FC !important;
+                background-color: #EBF2FC !important;
+            }
+
+            /* Help callout */
             .help-callout {
-                background: #FFF7ED;
-                border: 1px solid #FCD6B1;
-                color: #7C4A00;
+                background: #FFFFFF;
+                border: 1px solid #D0D0D0;
+                color: #333333;
                 padding: 0.75rem 1rem;
-                border-radius: 12px;
+                border-radius: 10px;
+            }
+
+            .help-callout strong {
+                color: #1A1A1A;
+            }
+
+            /* Streamlit info/success/warning/error boxes */
+            [data-testid="stAlert"] {
+                border-radius: 8px;
+            }
+
+            /* Sidebar and expander text */
+            .stExpander summary span {
+                color: #1A1A1A !important;
+                font-weight: 600 !important;
+            }
+
+            /* File uploader */
+            [data-testid="stFileUploader"] label {
+                color: #1A1A1A !important;
+            }
+
+            /* Input labels */
+            .stTextInput label, .stNumberInput label, .stTextArea label,
+            .stSelectbox label, .stCheckbox label, .stFileUploader label {
+                color: #1A1A1A !important;
+                font-weight: 500 !important;
+            }
+
+            /* Selectbox text */
+            [data-baseweb="select"] span {
+                color: #1A1A1A !important;
             }
         </style>
         """,
@@ -178,6 +292,12 @@ def init_session_state():
     if "last_provider_used" not in st.session_state:
         st.session_state.last_provider_used = None
 
+    if "extraction_result" not in st.session_state:
+        st.session_state.extraction_result = None
+
+    if "selected_provider" not in st.session_state:
+        st.session_state.selected_provider = LLMProvider.LM_STUDIO
+
 
 def validate_system():
     """Validate system requirements on startup."""
@@ -206,9 +326,9 @@ def render_system_status_panel():
             "Text scanning tool is missing. Install Tesseract to read invoices."
         )
 
-    if not results["ollama"]["available"] and not results["deepseek"]["configured"]:
+    if not results["ollama"]["available"] and not results["lm_studio"]["available"] and not results["deepseek"]["configured"]:
         warnings.append(
-            "No AI engine is ready. Start Ollama or add a Deepseek API key."
+            "No AI engine is ready. Start Ollama, LM Studio, or add a Deepseek API key."
         )
 
     if critical_issues:
@@ -224,7 +344,9 @@ def render_system_status_panel():
         models = results["ollama"].get("models", [])
         available.append(f"Ollama ({len(models)} models)")
     if results["lm_studio"]["available"]:
-        available.append("LM Studio")
+        lm_models = results["lm_studio"].get("models", [])
+        model_str = f" - {', '.join(lm_models)}" if lm_models else ""
+        available.append(f"LM Studio{model_str}")
     if results["deepseek"]["configured"]:
         available.append("Deepseek (cloud)")
 
@@ -248,9 +370,15 @@ def render_expert_settings_panel():
 
         all_providers = [LLMProvider.OLLAMA, LLMProvider.LM_STUDIO, LLMProvider.DEEPSEEK]
 
+        # Default to LM Studio (index 1)
+        default_idx = all_providers.index(
+            st.session_state.get("selected_provider", LLMProvider.LM_STUDIO)
+        )
+
         selected_provider = st.selectbox(
             "AI engine",
             options=all_providers,
+            index=default_idx,
             format_func=lambda x: provider_names.get(x, x.value),
             key="provider_selection",
             help="Choose which AI service to use for extraction",
@@ -327,27 +455,60 @@ def render_expert_settings_panel():
         elif selected_provider == LLMProvider.LM_STUDIO:
             st.subheader("LM Studio settings")
 
-            st.text_input(
-                "Model name",
-                value=st.session_state.config.lm_studio.model or "",
-                key="lm_studio_model",
-                placeholder="Leave empty to use the loaded model",
-                help="The model currently loaded in LM Studio",
-            )
+            # Try to get loaded models from LM Studio
+            lm_models = results.get("lm_studio", {}).get("models", [])
 
-            st.text_input(
-                "Image model (optional)",
-                value=st.session_state.config.lm_studio.vision_model or "",
-                key="lm_studio_vision_model",
-                placeholder="Example: llava-v1.6",
-                help="Image model for direct extraction",
-            )
+            if lm_models:
+                st.selectbox(
+                    "Text model",
+                    options=lm_models,
+                    key="lm_studio_model",
+                    help="Model currently loaded in LM Studio",
+                )
+
+                # Vision models - qwen-vl, llava, etc.
+                vision_candidates = [
+                    m for m in lm_models
+                    if any(kw in m.lower() for kw in ["vl", "vision", "llava", "qwen"])
+                ]
+                if vision_candidates:
+                    st.selectbox(
+                        "Vision model (for image extraction)",
+                        options=vision_candidates,
+                        key="lm_studio_vision_model",
+                        help="Vision-capable model for direct image extraction",
+                    )
+                    st.success(f"Vision model available: {vision_candidates[0]}")
+                else:
+                    st.text_input(
+                        "Vision model (optional)",
+                        value=st.session_state.config.lm_studio.vision_model or "",
+                        key="lm_studio_vision_model",
+                        placeholder="Load a vision model like qwen3-vl-4b-instruct",
+                        help="Vision model for direct image extraction",
+                    )
+            else:
+                st.text_input(
+                    "Model name",
+                    value=st.session_state.config.lm_studio.model or "",
+                    key="lm_studio_model",
+                    placeholder="e.g. qwen3-vl-4b-instruct",
+                    help="The model currently loaded in LM Studio",
+                )
+
+                st.text_input(
+                    "Vision model (optional)",
+                    value=st.session_state.config.lm_studio.vision_model or "",
+                    key="lm_studio_vision_model",
+                    placeholder="e.g. qwen3-vl-4b-instruct",
+                    help="Vision model for direct image extraction",
+                )
 
             st.text_input(
                 "LM Studio URL",
                 value=st.session_state.config.lm_studio.base_url,
                 key="lm_studio_url",
-                help="Usually http://localhost:1234",
+                help="Usually http://localhost:1234/v1",
             )
 
         elif selected_provider == LLMProvider.DEEPSEEK:
@@ -529,10 +690,9 @@ def perform_ocr():
 
 def perform_llm_extraction(ocr_text: Optional[str] = None, use_vision: bool = False):
     """Perform LLM extraction."""
-    provider = st.session_state.get("selected_provider")
+    provider = st.session_state.get("selected_provider", LLMProvider.LM_STUDIO)
     if not provider:
-        st.error("No LLM provider selected")
-        return None
+        provider = LLMProvider.LM_STUDIO
     
     config = st.session_state.config
     
@@ -563,7 +723,6 @@ def perform_llm_extraction(ocr_text: Optional[str] = None, use_vision: bool = Fa
             config.lm_studio.vision_model = vision_model
         if url := st.session_state.get("lm_studio_url"):
             config.lm_studio.base_url = url
-            
     elif provider == LLMProvider.DEEPSEEK:
         if api_key := st.session_state.get("deepseek_api_key"):
             config.deepseek.api_key = api_key
@@ -575,7 +734,7 @@ def perform_llm_extraction(ocr_text: Optional[str] = None, use_vision: bool = Fa
     
     try:
         if use_vision and st.session_state.uploaded_file_content:
-            with st.spinner(f"Reading with {provider.value} image model..."):
+            with st.spinner(f"Sending image to {provider.value} vision model... (this may take 30-60s)"):
                 response, used_provider = client.extract_from_image(
                     st.session_state.uploaded_file_content,
                     provider=provider,
@@ -585,19 +744,25 @@ def perform_llm_extraction(ocr_text: Optional[str] = None, use_vision: bool = Fa
                 st.error("No OCR text available")
                 return None
             
-            with st.spinner(f"Reading with {provider.value}..."):
+            with st.spinner(f"Extracting with {provider.value}... (this may take 30-60s)"):
                 response, used_provider = client.extract_from_text(
                     ocr_text,
                     provider=provider,
                 )
         
+        # Store raw response for debugging
+        st.session_state.llm_raw_response = response
+        
         # Parse response
         result = parser.parse_response(response)
-        result.provider_used = used_provider.value
+        result.llm_provider = used_provider.value
         
         if not result.success:
             for error in result.errors:
                 st.error(error)
+            # Show raw response in expander for debugging
+            with st.expander("Raw LLM response (debug)", expanded=False):
+                st.code(response[:3000] if len(response) > 3000 else response)
             return None
         
         if result.warnings:
@@ -621,14 +786,16 @@ def render_extraction_section():
         return
 
     st.subheader("Read the invoice")
-    st.caption("We scan the document and pull out the key details for review.")
+    st.caption("Choose how to extract data from this document.")
     
     col1, col2 = st.columns(2)
     
     with col1:
+        st.markdown("**OCR + AI Text Extraction**")
+        st.caption("Scans text with Tesseract, then uses AI to structure it.")
         with st.container():
             st.markdown("<div class='primary-cta'>", unsafe_allow_html=True)
-            run_extraction = st.button("Read invoice", type="primary", use_container_width=True)
+            run_extraction = st.button("Read invoice (OCR)", type="primary", use_container_width=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
         if run_extraction:
@@ -644,35 +811,54 @@ def render_extraction_section():
                     st.session_state.extraction_result = result
     
     with col2:
-        use_vision = st.session_state.get("use_vision_model", False)
-        vision_available = bool(st.session_state.config.ollama.vision_model)
+        st.markdown("**Vision AI (Direct Image Reading)**")
+        st.caption("Sends the image directly to a vision LLM for extraction.")
+        
+        # Check if vision model is available
+        provider = st.session_state.get("selected_provider", LLMProvider.LM_STUDIO)
+        vision_available = False
+        vision_model_name = ""
+        
+        if provider == LLMProvider.LM_STUDIO:
+            vision_model_name = (
+                st.session_state.get("lm_studio_vision_model")
+                or st.session_state.config.lm_studio.vision_model
+            )
+            vision_available = bool(vision_model_name)
+        elif provider == LLMProvider.OLLAMA:
+            vision_model_name = (
+                st.session_state.get("ollama_vision_model")
+                or st.session_state.config.ollama.vision_model
+            )
+            vision_available = bool(vision_model_name and vision_model_name != "None")
         
         with st.container():
             st.markdown("<div class='secondary-cta'>", unsafe_allow_html=True)
             run_vision = st.button(
-                "Use image understanding",
+                f"🔍 Read with Vision AI",
                 use_container_width=True,
-                disabled=not (use_vision and vision_available),
+                disabled=not vision_available,
+                type="secondary",
             )
             st.markdown("</div>", unsafe_allow_html=True)
 
-        if run_vision:
+        if run_vision and vision_available:
             result = perform_llm_extraction(use_vision=True)
             if result and result.invoice:
                 st.session_state.extracted_invoice = result.invoice
                 st.session_state.extraction_result = result
 
-        if not use_vision:
-            st.caption("Turn on image understanding in Expert mode if you want to skip text scanning.")
-        elif use_vision and not vision_available:
-            st.caption("Image model not found. Add one in Expert mode.")
+        if vision_available:
+            st.caption(f"Using: {vision_model_name}")
+        else:
+            st.caption("No vision model configured. Set one in Expert mode.")
 
     if st.session_state.last_provider_used:
         st.caption(f"Last run used: {st.session_state.last_provider_used}.")
     
     # Show OCR text if available
     if st.session_state.ocr_text:
-        with st.expander("Raw text (advanced)", expanded=False):
+        with st.expander("Raw OCR text (advanced)", expanded=False):
             st.text_area(
                 "Extracted text",
                 value=st.session_state.ocr_text,
@@ -703,11 +889,15 @@ def render_review_section():
             )
             invoice_date = st.text_input(
                 "Invoice Date",
-                value=invoice.header.invoice_date or "",
+                value=str(invoice.header.invoice_date) if invoice.header.invoice_date else "",
             )
             due_date = st.text_input(
                 "Due Date",
-                value=invoice.header.due_date or "",
+                value=str(invoice.header.due_date) if invoice.header.due_date else "",
+            )
+            order_number = st.text_input(
+                "Order/PO Number",
+                value=invoice.header.order_number or "",
             )
             
             st.subheader("Seller")
@@ -743,89 +933,112 @@ def render_review_section():
             
             st.subheader("Totals")
             subtotal = st.number_input(
-                "Subtotal (R)",
-                value=invoice.totals.subtotal or 0.0,
+                "Subtotal excl. VAT (R)",
+                value=float(invoice.totals.subtotal_excl_vat),
                 format="%.2f",
             )
             vat_amount = st.number_input(
                 "VAT Amount (R)",
-                value=invoice.totals.vat_amount or 0.0,
+                value=float(invoice.totals.total_vat),
                 format="%.2f",
             )
             total_due = st.number_input(
-                "Total Due (R)",
-                value=invoice.totals.total_due or 0.0,
+                "Total incl. VAT (R)",
+                value=float(invoice.totals.total_incl_vat),
                 format="%.2f",
             )
         
         # Line items
         st.subheader("Line items")
         
+        if invoice.line_items:
+            # Header row
+            hcols = st.columns([1, 3, 1, 1, 1, 1])
+            with hcols[0]:
+                st.markdown("**Code**")
+            with hcols[1]:
+                st.markdown("**Description**")
+            with hcols[2]:
+                st.markdown("**Qty**")
+            with hcols[3]:
+                st.markdown("**Unit Price**")
+            with hcols[4]:
+                st.markdown("**VAT**")
+            with hcols[5]:
+                st.markdown("**Line Total**")
+        
         line_items_data = []
         for i, item in enumerate(invoice.line_items):
-            st.markdown(f"**Item {i + 1}**")
-            cols = st.columns([3, 1, 1, 1, 1])
+            cols = st.columns([1, 3, 1, 1, 1, 1])
             
             with cols[0]:
+                code = st.text_input(
+                    f"Code_{i}",
+                    value=item.item_code or "",
+                    label_visibility="collapsed",
+                )
+            with cols[1]:
                 desc = st.text_input(
                     f"Description_{i}",
                     value=item.description,
                     label_visibility="collapsed",
                 )
-            with cols[1]:
+            with cols[2]:
                 qty = st.number_input(
                     f"Qty_{i}",
-                    value=item.quantity,
-                    label_visibility="collapsed",
-                )
-            with cols[2]:
-                price = st.number_input(
-                    f"Price_{i}",
-                    value=item.unit_price,
-                    format="%.2f",
+                    value=float(item.quantity),
                     label_visibility="collapsed",
                 )
             with cols[3]:
-                total = st.number_input(
-                    f"Total_{i}",
-                    value=item.line_total or 0.0,
+                price = st.number_input(
+                    f"Price_{i}",
+                    value=float(item.unit_price),
                     format="%.2f",
                     label_visibility="collapsed",
                 )
             with cols[4]:
-                vat_rate = st.number_input(
+                vat_item = st.number_input(
                     f"VAT_{i}",
-                    value=item.vat_rate,
-                    format="%.1f",
+                    value=float(item.vat_amount),
+                    format="%.2f",
+                    label_visibility="collapsed",
+                )
+            with cols[5]:
+                total = st.number_input(
+                    f"Total_{i}",
+                    value=float(item.line_total),
+                    format="%.2f",
                     label_visibility="collapsed",
                 )
             
             line_items_data.append({
+                "item_code": code,
                 "description": desc,
                 "quantity": qty,
                 "unit_price": price,
+                "vat_amount": vat_item,
                 "line_total": total,
-                "vat_rate": vat_rate,
-                "unit_of_measure": item.unit_of_measure,
+                "unit": item.unit or "each",
             })
         
         if st.form_submit_button("Save changes", type="primary"):
             # Update invoice with edited values
-            invoice.header.invoice_number = invoice_number or None
+            invoice.header.invoice_number = invoice_number or ""
             invoice.header.invoice_date = invoice_date or None
             invoice.header.due_date = due_date or None
+            invoice.header.order_number = order_number or ""
             
-            invoice.seller.name = seller_name or None
-            invoice.seller.vat_number = seller_vat or None
-            invoice.seller.address = seller_address or None
+            invoice.seller.name = seller_name or ""
+            invoice.seller.vat_number = seller_vat or ""
+            invoice.seller.address = seller_address or ""
             
-            invoice.customer.name = customer_name or None
-            invoice.customer.account_number = customer_account or None
-            invoice.customer.address = customer_address or None
+            invoice.customer.name = customer_name or ""
+            invoice.customer.account_number = customer_account or ""
+            invoice.customer.address = customer_address or ""
             
-            invoice.totals.subtotal = subtotal
-            invoice.totals.vat_amount = vat_amount
-            invoice.totals.total_due = total_due
+            invoice.totals.subtotal_excl_vat = subtotal
+            invoice.totals.total_vat = vat_amount
+            invoice.totals.total_incl_vat = total_due
             
             # Update line items
             invoice.line_items = [
@@ -839,6 +1052,7 @@ def render_review_section():
 def render_export_section():
     """Render the Excel export section."""
     invoice = st.session_state.extracted_invoice
+    extraction_result = st.session_state.get("extraction_result")
     if not invoice:
         return
     
@@ -850,7 +1064,24 @@ def render_export_section():
     with col1:
         # Show preview
         st.subheader("Preview")
-        rows = invoice.to_excel_rows()
+        
+        # Use ExtractionResult.to_excel_rows() if available, otherwise build manually
+        if extraction_result:
+            rows = extraction_result.to_excel_rows()
+        else:
+            # Fallback: build preview rows from the invoice model directly
+            rows = []
+            for item in invoice.line_items:
+                rows.append({
+                    "Invoice #": invoice.header.invoice_number,
+                    "Date": str(invoice.header.invoice_date) if invoice.header.invoice_date else "",
+                    "Seller": invoice.seller.name,
+                    "Customer": invoice.customer.name,
+                    "Item": item.description,
+                    "Qty": float(item.quantity),
+                    "Unit Price": float(item.unit_price),
+                    "Line Total": float(item.line_total),
+                })
         
         if rows:
             import pandas as pd

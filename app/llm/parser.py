@@ -82,11 +82,13 @@ class InvoiceParser:
         json_str = self._extract_json(response)
         
         if not json_str:
-            errors.append("No valid JSON found in response")
+            # Show truncated raw response for debugging
+            preview = response[:500] if len(response) > 500 else response
+            errors.append(f"No valid JSON found in response. Raw output: {preview}")
             return ExtractionResult(
                 success=False,
-                invoice=None,
-                raw_response=response,
+                invoice=ExtractedInvoice(),
+                ocr_text=response,
                 errors=errors,
                 warnings=warnings,
             )
@@ -98,8 +100,8 @@ class InvoiceParser:
             errors.append(f"JSON parse error: {str(e)}")
             return ExtractionResult(
                 success=False,
-                invoice=None,
-                raw_response=response,
+                invoice=ExtractedInvoice(),
+                ocr_text=response,
                 errors=errors,
                 warnings=warnings,
             )
@@ -115,8 +117,8 @@ class InvoiceParser:
             return ExtractionResult(
                 success=True,
                 invoice=invoice,
-                raw_response=response,
-                provider_used=None,  # Will be set by caller
+                ocr_text=response,
+                llm_provider="",  # Will be set by caller
                 errors=errors,
                 warnings=warnings,
             )
@@ -126,37 +128,62 @@ class InvoiceParser:
             logger.exception("Invoice parsing failed")
             return ExtractionResult(
                 success=False,
-                invoice=None,
-                raw_response=response,
+                invoice=ExtractedInvoice(),
+                ocr_text=response,
                 errors=errors,
                 warnings=warnings,
             )
     
     def _extract_json(self, response: str) -> Optional[str]:
         """Extract JSON object from response string."""
+        # Strip qwen3 <think>...</think> reasoning blocks
+        cleaned = re.sub(r"<think>[\s\S]*?</think>", "", response).strip()
+        # Also strip incomplete think blocks (model may not close the tag)
+        cleaned = re.sub(r"<think>[\s\S]*$", "", cleaned).strip()
+        
         # Try to find JSON block in markdown code blocks
         code_block_pattern = r"```(?:json)?\s*(\{[\s\S]*?\})\s*```"
-        match = re.search(code_block_pattern, response)
+        match = re.search(code_block_pattern, cleaned)
         if match:
-            return match.group(1)
-        
-        # Try to find raw JSON object
-        json_pattern = r"(\{[\s\S]*\})"
-        match = re.search(json_pattern, response)
-        if match:
-            # Validate it's actually JSON
             try:
                 json.loads(match.group(1))
                 return match.group(1)
             except json.JSONDecodeError:
                 pass
         
-        # Try the entire response as JSON
+        # Try the cleaned response as-is (may be pure JSON)
         try:
-            json.loads(response.strip())
-            return response.strip()
+            json.loads(cleaned)
+            return cleaned
         except json.JSONDecodeError:
             pass
+        
+        # Try to find the outermost JSON object with balanced braces
+        start = cleaned.find("{")
+        if start != -1:
+            depth = 0
+            for i in range(start, len(cleaned)):
+                if cleaned[i] == "{":
+                    depth += 1
+                elif cleaned[i] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        candidate = cleaned[start:i+1]
+                        try:
+                            json.loads(candidate)
+                            return candidate
+                        except json.JSONDecodeError:
+                            break
+        
+        # Try greedy regex as last resort
+        json_pattern = r"(\{[\s\S]*\})"
+        match = re.search(json_pattern, cleaned)
+        if match:
+            try:
+                json.loads(match.group(1))
+                return match.group(1)
+            except json.JSONDecodeError:
+                pass
         
         return None
     
@@ -165,41 +192,54 @@ class InvoiceParser:
         # Parse header
         header_data = data.get("header", {})
         header = InvoiceHeader(
-            invoice_number=header_data.get("invoice_number"),
+            invoice_number=header_data.get("invoice_number") or "",
             invoice_date=header_data.get("invoice_date"),
             due_date=header_data.get("due_date"),
-            purchase_order=header_data.get("purchase_order"),
+            order_number=header_data.get("purchase_order") or header_data.get("order_number") or "",
         )
         
         # Parse seller
         seller_data = data.get("seller", {})
         seller = SellerInfo(
-            name=seller_data.get("name"),
-            address=seller_data.get("address"),
-            vat_number=seller_data.get("vat_number"),
-            phone=seller_data.get("phone"),
-            email=seller_data.get("email"),
+            name=seller_data.get("name") or "",
+            address=seller_data.get("address") or "",
+            vat_number=seller_data.get("vat_number") or "",
+            telephone=seller_data.get("phone") or seller_data.get("telephone") or "",
+            email=seller_data.get("email") or "",
+            registration_number=seller_data.get("registration_number") or "",
         )
         
         # Parse customer
         customer_data = data.get("customer", {})
         customer = CustomerInfo(
-            name=customer_data.get("name"),
-            address=customer_data.get("address"),
-            account_number=customer_data.get("account_number"),
+            name=customer_data.get("name") or "",
+            address=customer_data.get("address") or "",
+            account_number=customer_data.get("account_number") or "",
         )
         
         # Parse line items
         line_items = []
         for item_data in data.get("line_items", []):
             try:
+                quantity = self._parse_number(item_data.get("quantity"), 1.0)
+                unit_price = self._parse_number(item_data.get("unit_price"), 0.0)
+                line_total = self._parse_number(item_data.get("line_total"))
+                vat_rate = self._parse_number(item_data.get("vat_rate"), 15.0)
+                
+                # Calculate vat_amount from vat_rate if not provided directly
+                vat_amount = self._parse_number(item_data.get("vat_amount"))
+                if vat_amount is None and vat_rate and quantity and unit_price:
+                    subtotal = quantity * unit_price
+                    vat_amount = subtotal * (vat_rate / 100.0)
+                
                 item = LineItem(
+                    item_code=item_data.get("item_code") or "",
                     description=item_data.get("description", "Unknown"),
-                    quantity=self._parse_number(item_data.get("quantity"), 1.0),
-                    unit_price=self._parse_number(item_data.get("unit_price"), 0.0),
-                    line_total=self._parse_number(item_data.get("line_total")),
-                    vat_rate=self._parse_number(item_data.get("vat_rate"), 15.0),
-                    unit_of_measure=item_data.get("unit_of_measure"),
+                    quantity=quantity,
+                    unit=item_data.get("unit_of_measure") or item_data.get("unit") or "each",
+                    unit_price=unit_price,
+                    vat_amount=vat_amount or 0.0,
+                    line_total=line_total or 0.0,
                 )
                 line_items.append(item)
             except Exception as e:
@@ -208,10 +248,15 @@ class InvoiceParser:
         # Parse totals
         totals_data = data.get("totals", {})
         totals = InvoiceTotals(
-            subtotal=self._parse_number(totals_data.get("subtotal")),
-            vat_amount=self._parse_number(totals_data.get("vat_amount")),
-            total_due=self._parse_number(totals_data.get("total_due")),
-            discount_amount=self._parse_number(totals_data.get("discount_amount"), 0.0),
+            subtotal_excl_vat=self._parse_number(
+                totals_data.get("subtotal") or totals_data.get("subtotal_excl_vat"), 0.0
+            ),
+            total_vat=self._parse_number(
+                totals_data.get("vat_amount") or totals_data.get("total_vat"), 0.0
+            ),
+            total_incl_vat=self._parse_number(
+                totals_data.get("total_due") or totals_data.get("total_incl_vat"), 0.0
+            ),
         )
         
         # Get metadata
@@ -224,8 +269,7 @@ class InvoiceParser:
             customer=customer,
             line_items=line_items,
             totals=totals,
-            confidence_score=min(max(confidence, 0.0), 1.0),
-            extraction_notes=notes if isinstance(notes, list) else [str(notes)],
+            reference_notes="; ".join(notes) if isinstance(notes, list) else str(notes or ""),
         )
     
     def _parse_number(self, value: Any, default: Optional[float] = None) -> Optional[float]:

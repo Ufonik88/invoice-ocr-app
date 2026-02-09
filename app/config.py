@@ -115,6 +115,7 @@ class OllamaConfig:
     vision_model: str = "llava:13b"  # For vision-based extraction
     temperature: float = 0.1  # Low temperature for deterministic extraction
     timeout: int = 120  # Seconds
+    context_length: int = 4096  # Context window size
     
     @staticmethod
     def validate_connection(base_url: str = "http://localhost:11434") -> tuple[bool, str]:
@@ -141,29 +142,38 @@ class OllamaConfig:
 class LMStudioConfig:
     """Configuration for LM Studio (OpenAI-compatible API)."""
     base_url: str = "http://localhost:1234/v1"
-    model: str = "local-model"  # LM Studio uses loaded model
+    model: str = "qwen3-vl-4b-instruct"  # Currently loaded model in LM Studio
+    vision_model: str = "qwen3-vl-4b-instruct"  # Vision-capable model for direct image extraction
     api_key: str = "not-needed"  # LM Studio doesn't require API key
     temperature: float = 0.1
-    timeout: int = 120
+    timeout: int = 180  # Vision models need more time
+    max_tokens: int = 4096  # Max tokens for response
     
     @staticmethod
-    def validate_connection(base_url: str = "http://localhost:1234/v1") -> tuple[bool, str]:
-        """Validate LM Studio is running and accessible."""
+    def validate_connection(base_url: str = "http://localhost:1234/v1") -> tuple[bool, str, list]:
+        """Validate LM Studio is running and accessible.
+        
+        Returns:
+            Tuple of (is_valid, message, loaded_models)
+        """
         import requests
         try:
             response = requests.get(f"{base_url}/models", timeout=5)
             if response.status_code == 200:
-                return True, "LM Studio connected and ready"
-            return False, f"LM Studio returned status {response.status_code}"
+                data = response.json()
+                models = [m.get("id", "unknown") for m in data.get("data", [])]
+                model_str = ", ".join(models) if models else "no models listed"
+                return True, f"LM Studio connected. Loaded models: {model_str}", models
+            return False, f"LM Studio returned status {response.status_code}", []
         except requests.exceptions.ConnectionError:
             return False, (
                 "Cannot connect to LM Studio. Ensure LM Studio is running:\n"
                 "• Open LM Studio application\n"
                 "• Load a model\n"
-                "• Start the local server (Server tab)"
-            )
+                "• Start the local server (Developer tab)"
+            ), []
         except Exception as e:
-            return False, f"Error connecting to LM Studio: {str(e)}"
+            return False, f"Error connecting to LM Studio: {str(e)}", []
 
 
 @dataclass
@@ -308,15 +318,19 @@ def validate_system_requirements() -> dict:
     
     # Check LM Studio
     lm_studio_available = False
+    lm_studio_models = []
     try:
         response = requests.get("http://localhost:1234/v1/models", timeout=5)
         if response.status_code == 200:
             lm_studio_available = True
+            models_data = response.json().get("data", [])
+            lm_studio_models = [m.get("id", "") for m in models_data]
     except Exception:
         pass
     
     results["lm_studio"] = {
         "available": lm_studio_available,
+        "models": lm_studio_models,
     }
     
     # Check Deepseek configuration
